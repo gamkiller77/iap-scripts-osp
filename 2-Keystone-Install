@@ -26,8 +26,8 @@ mysql -u root -pnotmysql -e "GRANT ALL ON keystone.* TO 'keystone'@'%' IDENTIFIE
 
 # Configure Keystone
 sudo sed -i "s|connection=sqlite:////var/lib/keystone/keystone.db|connection=mysql://keystone:notkeystone@$MY_PRIVATE_IP/keystone|g" /etc/keystone/keystone.conf
-sudo sed -i "s|#public_endpoint=http://localhost:%(public_port)s/|public_endpoint=http://$MY_PUBLIC_IP:%(public_port)s/|g" /etc/keystone/keystone.conf
-sudo sed -i "s|#admin_endpoint=http://localhost:%(admin_port)s/|admin_endpoint=http://$MY_PRIVATE_IP:%(admin_port)s/|g" /etc/keystone/keystone.conf
+sudo sed -i "s|#public_endpoint=<None>|public_endpoint=http://$MY_PUBLIC_IP:%(public_port)s/|g" /etc/keystone/keystone.conf
+sudo sed -i "s|#admin_endpoint=<None>|admin_endpoint=http://$MY_PRIVATE_IP:%(admin_port)s/|g" /etc/keystone/keystone.conf
 
 # Initialize Keystone database
 sudo keystone-manage db_sync
