@@ -1,0 +1,56 @@
+# Install Ubuntu Cloud Keyring and add Ubuntu Cloud Archive repository for Icehouse or Juno
+# Note: This may have already been completed for you in this training environment (ask instructor)
+# Carry out the following steps to configure Ubuntu 14.04 LTS to use the Ubuntu Cloud Archive
+# To access the Ubuntu Cloud Archive repository, we first install the Ubuntu Cloud Archive Keyring and enable Personal Package Archives within Ubuntu as follows: 
+
+sudo apt-get update
+sudo apt-get install -y software-properties-common ubuntu-cloud-keyring
+
+# Next we enable the Ubuntu Cloud Archive for OpenStack Juno. We do this as follows: 
+
+sudo add-apt-repository -y cloud-archive:juno
+sudo apt-get update
+
+
+# Export IP address, before running exercises, cloud server IP for eth0
+
+export MY_PRIVATE_IP=<ip_address_of_eth0>
+export MY_PUBLIC_IP=<ip_address_of_eth0>
+export MY_IP=<ip_address_of_eth0>
+
+# for example : export MY_PRIVATE_IP=50.56.249.88
+# export MY_PUBLIC_IP=50.56.249.88
+# export MY_IP=50.56.249.88
+
+
+# Synchronize time
+sudo ntpdate ntp.ubuntu.com
+
+# Install RabbitMQ
+sudo apt-get install -y rabbitmq-server
+
+# Configure RabbitMQ (Verify configuration directory exists)
+sudo mkdir /etc/rabbitmq/rabbitmq.conf.d
+cat <<EOF | sudo tee /etc/rabbitmq/rabbitmq.conf.d/rabbitmq-listen.conf
+RABBITMQ_NODE_IP_ADDRESS=$MY_PRIVATE_IP
+EOF
+sudo chmod 644 /etc/rabbitmq/rabbitmq.conf.d/rabbitmq-listen.conf
+
+# Restart RabbitMQ
+sudo service rabbitmq-server restart
+
+# Pre-seed MySQL install
+cat <<EOF | sudo debconf-set-selections
+mysql-server-5.1 mysql-server/root_password password notmysql
+mysql-server-5.1 mysql-server/root_password_again password notmysql
+mysql-server-5.1 mysql-server/start_on_boot boolean true
+EOF
+
+# Install MySQL
+sudo apt-get install -y mysql-server python-mysqldb
+
+# Configure MySQL
+sudo sed -i "s/127.0.0.1/$MY_PRIVATE_IP\nskip-name-resolve\ncharacter-set-server = utf8\ncollation-server = utf8_general_ci\ninit-connect = 'SET NAMES utf8'/g" /etc/mysql/my.cnf
+
+# Restart MySQL
+sudo service mysql restart
