@@ -39,6 +39,17 @@ sudo chmod 644 /etc/rabbitmq/rabbitmq.conf.d/rabbitmq-listen.conf
 # Restart RabbitMQ
 sudo service rabbitmq-server restart
 
+# enable web admin UI
+
+sudo rabbitmq-plugins enable rabbitmq_management
+
+sudo rabbitmqctl change_password guest guest
+
+sudo service rabbitmq-server restart
+
+http://server-name:15672/
+#log in to the website and use the username and password from above
+
 # Pre-seed MySQL install
 cat <<EOF | sudo debconf-set-selections
 mysql-server-5.1 mysql-server/root_password password notmysql
