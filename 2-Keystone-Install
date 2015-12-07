@@ -86,7 +86,7 @@ keystone service-list
 keystone endpoint-list
 
 # Show presence of Keystone v3 API by listing domains, need to first install http
-apt-get install httpie
+sudo apt-get install httpie
 http --verbose http://$MY_PRIVATE_IP:35357/v3/domains X-Auth-Token:$SERVICE_TOKEN Content-type:application/json
 
 # The Keystone "admin" credentials are no longer needed
