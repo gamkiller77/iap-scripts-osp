@@ -122,6 +122,10 @@ sudo ovs-vsctl add-br br-ex
 # Verify Open VSwitch bridges exist
 sudo ovs-vsctl show
 
+#populate DB
+sudo su -s /bin/sh -c "neutron-db-manage --config-file /etc/neutron/neutron.conf \
+  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head" neutron
+
 # Start Neutron
 sudo service neutron-server start
 
