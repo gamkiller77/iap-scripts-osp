@@ -81,8 +81,8 @@ EOF
 sudo cinder-manage db sync
 
 # Create volume groups
-sudo vgcreate cinder-volumes-sata /dev/loop0
-sudo vgcreate cinder-volumes-ssd  /dev/loop1
+sudo vgcreate cinder-volumes-sata /dev/sdb
+sudo vgcreate cinder-volumes-ssd  /dev/sdc
 
 # Verify volume groups
 sudo vgdisplay
