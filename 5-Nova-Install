@@ -1,56 +1,54 @@
-Neutron provides the networking part to OpenStack. Neutron has been redesigned from scratch. The old networking component was called nova-network and can still be used, although this is not encouraged. However, neutron doesn't actually do any of the networking itself. Basically it just provides an API frontend and a standardized plugin system for whatever networking hard- or software will be used. In this exercise, we use Open vSwitch.
+# Install Nova - OpenStack Compute Service
+sudo apt-get install -y nova-api nova-scheduler nova-conductor nova-cert nova-consoleauth nova-novncproxy nova-compute
 
-# Install Neutron dependencies
-sudo apt-get install -y openvswitch-switch
+# Check if host supports KVM
+sudo kvm-ok
 
-# Check Kernel Version
-uname -r
+# If host supports KVM, ensure Kernel Modules are loaded
+sudo modprobe kvm
+sudo modprobe kvm_intel
+cat <<EOF | sudo tee -a /etc/modules
+kvm
+kvm_intel
+EOF
 
-# Install Open vSwitch Datapath DKMS if Kernel <3.11
-# sudo apt-get install -y openvswitch-datapath-dkms
+# If host doesn't support KVM, install QEMU
+# sudo apt-get install -y nova-compute-qemu
 
-# Ensure Kernel Modules are loaded
-sudo modprobe gre
-sudo modprobe openvswitch
+# Stop Nova
+sudo service nova-api stop
+sudo service nova-scheduler stop
+sudo service nova-conductor stop
+sudo service nova-cert stop
+sudo service nova-consoleauth stop
+sudo service nova-novncproxy stop
+sudo service nova-compute stop
 
-# Restart Open vSwitch
-sudo service openvswitch-switch restart
-
-# Install Neutron - OpenStack Network Service
-sudo apt-get install -y neutron-server neutron-plugin-ml2 neutron-plugin-openvswitch-agent neutron-dhcp-agent neutron-l3-agent neutron-metadata-agent
-
-# Stop Neutron
-sudo service neutron-plugin-openvswitch-agent stop
-sudo service neutron-dhcp-agent stop
-sudo service neutron-l3-agent stop
-sudo service neutron-metadata-agent stop
-sudo service neutron-server stop
-
-# Create Neutron database
-mysql -u root -pnotmysql -e "CREATE DATABASE neutron;"
-mysql -u root -pnotmysql -e "GRANT ALL ON neutron.* TO 'neutron'@'localhost' IDENTIFIED BY 'notneutron';"
-mysql -u root -pnotmysql -e "GRANT ALL ON neutron.* TO 'neutron'@'%' IDENTIFIED BY 'notneutron';"
+# Create Nova database
+mysql -u root -pnotmysql -e "CREATE DATABASE nova;"
+mysql -u root -pnotmysql -e "GRANT ALL ON nova.* TO 'nova'@'localhost' IDENTIFIED BY 'notnova';"
+mysql -u root -pnotmysql -e "GRANT ALL ON nova.* TO 'nova'@'%' IDENTIFIED BY 'notnova';"
 
 # Use 'admin' credentials
 source ~/credentials/admin
 
-# Create Neutron service user
-keystone user-create --tenant-id $SERVICE_TENANT_ID --name neutron --pass notneutron
-NEUTRON_USER_ID=`keystone user-get neutron | awk '/ id / { print $4 }'`
+# Create Nova service user
+keystone user-create --tenant-id $SERVICE_TENANT_ID --name nova --pass notnova
+NOVA_USER_ID=`keystone user-get nova | awk '/ id / { print $4 }'`
 
-# Grant 'admin' role to Neutron service user
-keystone user-role-add --user-id $NEUTRON_USER_ID --tenant-id $SERVICE_TENANT_ID --role-id $ADMIN_ROLE_ID
+# Grant 'admin' role to Nova service user
+keystone user-role-add --user-id $NOVA_USER_ID --tenant-id $SERVICE_TENANT_ID --role-id $ADMIN_ROLE_ID
 
 # List service users and roles
 keystone user-list --tenant-id $SERVICE_TENANT_ID
-keystone user-role-list --tenant-id $SERVICE_TENANT_ID --user-id $NEUTRON_USER_ID
+keystone user-role-list --tenant-id $SERVICE_TENANT_ID --user-id $NOVA_USER_ID
 
 # Populate service in service catalog
-keystone service-create --name=neutron --type=network --description="Neutron Network Service"
-NEUTRON_SVC_ID=`keystone service-get neutron | awk '/ id / { print $4 }'`
+keystone service-create --name=nova --type=compute --description="Nova Compute Service"
+NOVA_SVC_ID=`keystone service-get nova | awk '/ id / { print $4 }'`
 
 # Populate endpoint in service catalog
-keystone endpoint-create --region RegionOne --service-id=$NEUTRON_SVC_ID --publicurl=http://$MY_PUBLIC_IP:9696 --internalurl=http://$MY_PRIVATE_IP:9696 --adminurl=http://$MY_PRIVATE_IP:9696
+keystone endpoint-create --region RegionOne --service-id=$NOVA_SVC_ID --publicurl="http://$MY_PUBLIC_IP:8774/v2/%(tenant_id)s" --internalurl="http://$MY_PRIVATE_IP:8774/v2/%(tenant_id)s" --adminurl="http://$MY_PRIVATE_IP:8774/v2/%(tenant_id)s"
 
 # List new services
 keystone service-list
@@ -58,107 +56,136 @@ keystone service-list
 # List new endpoints
 keystone endpoint-list
 
-# Configure Neutron
-sudo sed -i "s|connection = sqlite:////var/lib/neutron/neutron.sqlite|connection = mysql://neutron:notneutron@$MY_PRIVATE_IP/neutron|g" /etc/neutron/neutron.conf
-sudo sed -i "s/# rabbit_host = localhost/rabbit_host = $MY_PRIVATE_IP/g" /etc/neutron/neutron.conf
-sudo sed -i 's/# allow_overlapping_ips = False/allow_overlapping_ips = True/g' /etc/neutron/neutron.conf
-sudo sed -i 's/core_plugin = neutron.plugins.ml2.plugin.Ml2Plugin/core_plugin = ml2/g' /etc/neutron/neutron.conf
-sudo sed -i 's/# service_plugins =/service_plugins = router/g' /etc/neutron/neutron.conf
-sudo sed -i 's/# auth_strategy = keystone/auth_strategy = keystone/g' /etc/neutron/neutron.conf
-sudo sed -i "s/auth_host = 127.0.0.1/auth_host = $MY_PRIVATE_IP/g" /etc/neutron/neutron.conf
-sudo sed -i 's/%SERVICE_TENANT_NAME%/Services/g' /etc/neutron/neutron.conf
-sudo sed -i 's/%SERVICE_USER%/neutron/g' /etc/neutron/neutron.conf
-sudo sed -i 's/%SERVICE_PASSWORD%/notneutron/g' /etc/neutron/neutron.conf
-sudo sed -i "s/# notify_nova_on_port_status_changes = True/notify_nova_on_port_status_changes = True/g" /etc/neutron/neutron.conf
-sudo sed -i "s/# notify_nova_on_port_data_changes = True/notify_nova_on_port_data_changes = True/g" /etc/neutron/neutron.conf
-sudo sed -i "s|# nova_url = http://127.0.0.1:8774\(\/v2\)\?|nova_url = http://$MY_PRIVATE_IP:8774/v2|g" /etc/neutron/neutron.conf
-sudo sed -i "s/# nova_admin_username =/nova_admin_username = nova/g" /etc/neutron/neutron.conf
-sudo sed -i "s/# nova_admin_tenant_id =/nova_admin_tenant_id = $SERVICE_TENANT_ID/g" /etc/neutron/neutron.conf
-sudo sed -i "s/# nova_admin_password =/nova_admin_password = notnova/g" /etc/neutron/neutron.conf
-sudo sed -i "s|# nova_admin_auth_url =|nova_admin_auth_url = http://$MY_PRIVATE_IP:35357/v2.0|g" /etc/neutron/neutron.conf
-sudo sed -i 's|service_provider=LOADBALANCER|#service_provider=LOADBALANCER|g' /etc/neutron/neutron.conf
-sudo sed -i 's|service_provider=VPN|#service_provider=VPN|g' /etc/neutron/neutron.conf
+# Configure Nova
+cat <<EOF | sudo tee -a /etc/nova/nova.conf
+network_api_class=nova.network.neutronv2.api.API
+neutron_url=http://$MY_PRIVATE_IP:9696
+neutron_auth_strategy=keystone
+neutron_admin_tenant_name=Services
+neutron_admin_username=neutron
+neutron_admin_password=notneutron
+neutron_admin_auth_url=http://$MY_PRIVATE_IP:35357/v2.0
+firewall_driver=nova.virt.firewall.NoopFirewallDriver
+security_group_api=neutron
+linuxnet_interface_driver=nova.network.linux_net.LinuxOVSInterfaceDriver
+rabbit_host=$MY_PRIVATE_IP
+glance_host=$MY_PRIVATE_IP
+auth_strategy=keystone
+force_config_drive=always
+my_ip=$MY_PRIVATE_IP
+fixed_ip_disassociate_timeout=30
+enable_instance_password=False
+service_neutron_metadata_proxy=True
+neutron_metadata_proxy_shared_secret=openstack
+novncproxy_base_url=http://$MY_PUBLIC_IP:6080/vnc_auto.html
+vncserver_proxyclient_address=$MY_PRIVATE_IP
+vncserver_listen=0.0.0.0
 
-# Configure Neutron ML2
-sudo sed -i 's|# type_drivers = local,flat,vlan,gre,vxlan|type_drivers = gre|g' /etc/neutron/plugins/ml2/ml2_conf.ini
-sudo sed -i 's|# tenant_network_types = local|tenant_network_types = gre|g' /etc/neutron/plugins/ml2/ml2_conf.ini
-sudo sed -i 's|# mechanism_drivers =|mechanism_drivers = openvswitch|g' /etc/neutron/plugins/ml2/ml2_conf.ini
-sudo sed -i 's|# tunnel_id_ranges =|tunnel_id_ranges = 1:1000|g' /etc/neutron/plugins/ml2/ml2_conf.ini
-sudo sed -i 's|# enable_security_group = True|firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver\nenable_security_group = True|g' /etc/neutron/plugins/ml2/ml2_conf.ini
+[database]
+connection=mysql://nova:notnova@$MY_PRIVATE_IP/nova
 
-# Configure Neutron ML2 continued...
-( cat | sudo tee -a /etc/neutron/plugins/ml2/ml2_conf.ini ) <<EOF
-
-[ovs]
-local_ip = $MY_PRIVATE_IP
-tunnel_type = gre
-enable_tunneling = True
+[keystone_authtoken]
+auth_uri = http://$MY_PRIVATE_IP:5000
+auth_host = $MY_PRIVATE_IP
+auth_port = 35357
+auth_protocol = http
+admin_tenant_name = Services
+admin_user = nova
+admin_password = notnova
 EOF
 
-# Configure Neutron DHCP Agent
-sudo sed -i 's/# interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/g' /etc/neutron/dhcp_agent.ini
-sudo sed -i 's/# dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq/dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq/g' /etc/neutron/dhcp_agent.ini
-sudo sed -i 's/# use_namespaces = True/use_namespaces = True/g' /etc/neutron/dhcp_agent.ini
-sudo sed -i 's/# enable_isolated_metadata = False/enable_isolated_metadata = True/g' /etc/neutron/dhcp_agent.ini
-sudo sed -i 's/# enable_metadata_network = False/enable_metadata_network = True/g' /etc/neutron/dhcp_agent.ini
+# Initialize Nova database
+sudo nova-manage db sync
 
-# Configure Neutron L3 Agent
-sudo sed -i 's/# interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/g' /etc/neutron/l3_agent.ini
-sudo sed -i 's/# use_namespaces = True/use_namespaces = True/g' /etc/neutron/l3_agent.ini
+# Start Nova
+sudo service nova-api start
+sudo service nova-scheduler start
+sudo service nova-conductor start
+sudo service nova-cert start
+sudo service nova-consoleauth start
+sudo service nova-novncproxy start
+sudo service nova-compute start
 
-# Configure Neutron Metadata Agent
-sudo sed -i "s/# nova_metadata_ip = 127.0.0.1/nova_metadata_ip = $MY_PRIVATE_IP/g" /etc/neutron/metadata_agent.ini
-sudo sed -i 's/# nova_metadata_port = 8775/nova_metadata_port = 8775/g' /etc/neutron/metadata_agent.ini
-sudo sed -i 's/# metadata_proxy_shared_secret =/metadata_proxy_shared_secret = openstack/g' /etc/neutron/metadata_agent.ini
-sudo sed -i "s|auth_url = http://localhost:5000/v2.0|auth_url = http://$MY_PRIVATE_IP:5000/v2.0|g" /etc/neutron/metadata_agent.ini
-sudo sed -i 's/%SERVICE_TENANT_NAME%/Services/g' /etc/neutron/metadata_agent.ini
-sudo sed -i 's/%SERVICE_USER%/neutron/g' /etc/neutron/metadata_agent.ini
-sudo sed -i 's/%SERVICE_PASSWORD%/notneutron/g' /etc/neutron/metadata_agent.ini
+# Verify Nova is running
+pgrep -l nova
 
-# Create Open vSwitch integration bridge and external bridge
-sudo ovs-vsctl add-br br-int
-sudo ovs-vsctl add-br br-ex
-
-# Verify Open VSwitch bridges exist
-sudo ovs-vsctl show
-
-# Start Neutron
-sudo service neutron-server start
-
-# Wait for neutron-server to automatically run DB sync (please wait at least 30 seconds before proceeding)
-sleep 30
-
-# Start Neutron agents
-sudo service neutron-plugin-openvswitch-agent start
-sudo service neutron-dhcp-agent start
-sudo service neutron-l3-agent start
-sudo service neutron-metadata-agent start
-
-# Verify Neutron is running
-pgrep -l neutron
-
-# Verify Neutron Agents (Open vSwitch, L3, and DHCP) are functioning and checking in :-)
-neutron agent-list
+# Verify Nova services are functioning and checking in :-)
+nova service-list
 
 # Use 'user' credentials
 source ~/credentials/user
 
-# Create a network and subnet
-neutron net-create private
-PRIVATE_NET_ID=`neutron net-show private | awk '/ id / { print $4 }'`
-neutron subnet-create --name private-subnet1 $PRIVATE_NET_ID 10.0.0.0/29
-PRIVATE_SUBNET1_ID=`neutron subnet-show private-subnet1 | awk '/ id / { print $4 }'`
+# List images
+nova image-list
 
-# List network and subnet
-neutron net-list
-neutron subnet-list
+# List flavors
+nova flavor-list
 
-# Examine details of network and subnet
-neutron net-show $PRIVATE_NET_ID
-neutron subnet-show $PRIVATE_SUBNET1_ID
+# Boot an instance using flavor and image names (if names are unique)
+nova boot --image cirros-qcow2 --flavor m1.tiny MyFirstInstance
+MYFIRSTINSTANCE_ID=`nova show MyFirstInstance | awk '/ id / { print $4 }'`
 
-cat >> ~/.bashrc <<EOF
-export PRIVATE_NET_ID=$PRIVATE_NET_ID
-export PRIVATE_SUBNET1_ID=$PRIVATE_SUBNET1_ID
+# Boot an instance using flavor and image IDs
+nova boot --image $IMAGE1_ID --flavor 1 MySecondInstance
+
+# List instances, notice status of instance
+nova list
+
+# Show details of instance
+nova show MyFirstInstance
+
+# View console log of instance
+nova console-log MyFirstInstance
+
+# Update default security group to allow host access to guest subnet
+neutron security-group-rule-create --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 22 --port-range-max 22 --remote-ip-prefix 10.0.0.0/24 default
+neutron security-group-rule-create --direction ingress --ethertype IPv4 --protocol icmp --remote-ip-prefix 10.0.0.0/24 default
+
+# Get network namespace (ie, qdhcp-5ab46e23-118a-4cad-9ca8-51d56a5b6b8c)
+sudo ip netns
+PRIVATE_NETNS_ID=qdhcp-$PRIVATE_NET_ID
+
+# Examine network configuration inside of namespace
+sudo ip netns exec $PRIVATE_NETNS_ID ip addr
+
+# Ping first instance after status is active, and network is up
+sudo ip netns exec $PRIVATE_NETNS_ID ping -c 3 10.0.0.2
+
+# Log into instance ( username is 'cirros', password is 'cubswin:)' )
+sudo ssh-keygen -f "/root/.ssh/known_hosts" -R 10.0.0.2
+sudo ip netns exec $PRIVATE_NETNS_ID ssh cirros@10.0.0.2
+
+# Ping second instance from first instance
+ping -c 3 10.0.0.4
+
+# Log into second instance from first instance ( username is 'cirros', password is 'cubswin:)' )
+ssh cirros@10.0.0.4
+
+# Log out of second instance
+exit
+
+# Log out of first instance
+exit
+
+# Use virsh to talk directly to libvirt
+sudo virsh list --all
+
+# Examine active instance
+ll /var/lib/nova/instances/$MYFIRSTINSTANCE_ID
+sudo cat /var/lib/nova/instances/$MYFIRSTINSTANCE_ID/console.log
+sudo cat /var/lib/nova/instances/$MYFIRSTINSTANCE_ID/libvirt.xml
+
+# Examine cached base image
+ll /var/lib/nova/instances/_base
+qemu-img info /var/lib/nova/instances/_base/*
+
+# Delete instances
+nova delete MyFirstInstance
+nova delete MySecondInstance
+
+# List instances, notice status of instance
+nova list
+
+cat >> ~/.bashrc &lt;&lt;EOF
+export PRIVATE_NETNS_ID=$PRIVATE_NETNS_ID
 EOF
-
