@@ -41,9 +41,7 @@ keystone endpoint-list
 
 # Configure Glance-API
 sudo sed -i "s|#connection = <None>|connection = mysql://glance:notglance@$MY_PRIVATE_IP/glance|g" /etc/glance/glance-api.conf
-#### This sed line needs more looking at the $MY_PRIVATE_IP is not going in
 sudo sed -i "s|identity_uri = http://127.0.0.1:35357|identity_uri = http://$MY_PRIVATE_IP:35357|g" /etc/glance/glance-api.conf
-####
 sudo sed -i "s/rabbit_host = localhost/rabbit_host = $MY_PRIVATE_IP/g" /etc/glance/glance-api.conf
 sudo sed -i 's/%SERVICE_TENANT_NAME%/Services/g' /etc/glance/glance-api.conf
 sudo sed -i 's/%SERVICE_USER%/glance/g' /etc/glance/glance-api.conf
