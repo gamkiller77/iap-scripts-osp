@@ -186,6 +186,6 @@ nova delete MySecondInstance
 # List instances, notice status of instance
 nova list
 
-cat >> ~/.bashrc &lt;&lt;EOF
+cat >> ~/.bashrc << EOF
 export PRIVATE_NETNS_ID=$PRIVATE_NETNS_ID
 EOF
