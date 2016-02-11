@@ -28,7 +28,7 @@ keystone service-list
 keystone endpoint-list
 
 # Install Swift dependencies
-sudo apt-get install -y --force-yes xfsprogs memcached python-memcache python-webob python-keystone
+sudo apt-get install -y xfsprogs
 
 # Install Swift - OpenStack Object Storage
 sudo apt-get install -y swift swift-account swift-container swift-object swift-object-expirer swift-proxy python-swiftclient
