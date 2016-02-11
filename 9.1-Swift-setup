@@ -19,7 +19,7 @@ keystone service-create --name=swift --type=object-store --description="Swift Ob
 SWIFT_SVC_ID=`keystone service-get swift | awk '/ id / { print $4 }'`
 
 # Populate endpoint in service catalog
-keystone endpoint-create --region RegionOne --service-id=$SWIFT_SVC_ID --publicurl="http://$MY_PUBLIC_IP:8080/v1/AUTH_%(tenant_id)s" --internalurl="http://$MY_PRIVATE_IP:8080/v1/AUTH_%(tenant_id)s" --adminurl=http://$MY_PRIVATE_IP:8080/v1
+keystone endpoint-create --region RegionOne --service-id=$SWIFT_SVC_ID --publicurl="http://$MY_PUBLIC_IP:8080/v1/AUTH_%(tenant_id)s" --internalurl="http://$MY_PUBLIC_IP:8080/v1/AUTH_%(tenant_id)s" --adminurl=http://$MY_PUBLIC_IP:8080/v1
 
 # List new services
 keystone service-list
