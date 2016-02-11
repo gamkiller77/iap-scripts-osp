@@ -1,17 +1,4 @@
-## Setup Swift Nodes ##
-
-sudo apt-get update
-sudo apt-get install -y software-properties-common ubuntu-cloud-keyring
-
-# Next we enable the Ubuntu Cloud Archive for OpenStack Juno. We do this as follows: 
-
-sudo apt-get install ubuntu-cloud-keyring
-sudo echo "deb http://ubuntu-cloud.archive.canonical.com/ubuntu" \
-  "trusty-updates/juno main" > /etc/apt/sources.list.d/cloudarchive-juno.list
-
-sudo add-apt-repository -y cloud-archive:juno
-sudo apt-get update
-
+# install Swift steps
 
 # Use 'admin' credentials
 source ~/credentials/admin
