@@ -43,46 +43,44 @@ sudo mkdir -p /var/cache/swift/keystone-signing
 sudo chown -R swift: /var/cache/swift
 
 #follow the instruction on the wiki page for adding disk for swift storage
+# lsblk
 
 # Set up the filesystems
-sudo mkfs.xfs -f -i size=1024 /dev/sd
-sudo mkfs.xfs -f -i size=1024 /dev/sd
-sudo mkfs.xfs -f -i size=1024 /dev/sd
-sudo mkfs.xfs -f -i size=1024 /dev/sd
-sudo mkfs.xfs -f -i size=1024 /dev/sd
-sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f /dev/sde
+sudo mkfs.xfs -f /dev/sdf
+sudo mkfs.xfs -f /dev/sdg
+sudo mkfs.xfs -f /dev/sdh
+sudo mkfs.xfs -f /dev/sdi
+
 
 # Create the mount points
-sudo mkdir -p /srv/node/loop{2,3,4,5,6,7}
+sudo mkdir -p /srv/node/sd{e,f,g,h,i}
 
 # Setup drives to be mounted in /etc/fstab (notice noauto)
 ( cat | sudo tee -a /etc/fstab ) <<EOF
-/dev/loop2 /srv/node/loop2 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
-/dev/loop3 /srv/node/loop3 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
-/dev/loop4 /srv/node/loop4 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
-/dev/loop5 /srv/node/loop5 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
-/dev/loop6 /srv/node/loop6 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
-/dev/loop7 /srv/node/loop7 xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
+/dev/sde /srv/node/sde xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
+/dev/sdf /srv/node/sdf xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
+/dev/sdg /srv/node/sdg xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
+/dev/sdh /srv/node/sdh xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
+/dev/sdi /srv/node/sdi xfs noauto,noatime,nodiratime,nobarrier,logbufs=8 0 0
 EOF
 
 # Mount the drives now
-sudo mount /srv/node/loop2
-sudo mount /srv/node/loop3
-sudo mount /srv/node/loop4
-sudo mount /srv/node/loop5
-sudo mount /srv/node/loop6
-sudo mount /srv/node/loop7
+sudo mount /srv/node/sde
+sudo mount /srv/node/sdf
+sudo mount /srv/node/sdg
+sudo mount /srv/node/sdh
+sudo mount /srv/node/sdi
 
 # Mount the drives at boot
 ( cat | sudo tee /etc/rc.local ) <<EOF
 #!/bin/sh -e
 
-mount /srv/node/loop2
-mount /srv/node/loop3
-mount /srv/node/loop4
-mount /srv/node/loop5
-mount /srv/node/loop6
-mount /srv/node/loop7
+mount /srv/node/sde
+mount /srv/node/sdf
+mount /srv/node/sdg
+mount /srv/node/sdh
+mount /srv/node/sdi
 
 exit 0
 EOF
@@ -151,7 +149,7 @@ use = egg:swift#healthcheck
 
 [filter:cache]
 use = egg:swift#memcache
-memcache_servers = $MY_PRIVATE_IP:11211
+memcache_servers = $MY_PUBLIC_IP:11211
 
 [filter:authtoken]
 paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
@@ -159,10 +157,10 @@ paste.filter_factory = keystoneclient.middleware.auth_token:filter_factory
 # usage for anonymous referrers ('.r:*') or for tempurl/formpost
 # middleware.
 delay_auth_decision = true
-auth_host = $MY_PRIVATE_IP
+auth_host = $MY_PUBLIC_IP
 auth_port = 35357
 auth_protocol = http
-auth_uri = http://$MY_PRIVATE_IP:5000/
+auth_uri = http://$MY_PUBLIC_IP:5000/
 admin_tenant_name = Services
 admin_user = swift
 admin_password = notswift
@@ -198,7 +196,7 @@ use = egg:swift#proxy
 
 [filter:cache]
 use = egg:swift#memcache
-memcache_servers = $MY_PRIVATE_IP:11211
+memcache_servers = $MY_PUBLIC_IP:11211
 
 [filter:catch_errors]
 use = egg:swift#catch_errors
