@@ -17,8 +17,8 @@ EOF
 
 swift upload testcontainer test.txt
 
-# Download (and view) the file
-swift download testcontainer test.txt -o -
+# Download the file
+swift download testcontainer test.txt
 
 # Find your account ID
 swift stat
