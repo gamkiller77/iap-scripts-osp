@@ -42,13 +42,15 @@ sudo mkdir -p /var/cache/swift/keystone-signing
 # Ensure swift owns everything in it's cache directory
 sudo chown -R swift: /var/cache/swift
 
+#follow the instruction on the wiki page for adding disk for swift storage
+
 # Set up the filesystems
-sudo mkfs.xfs -f -i size=1024 /dev/loop2
-sudo mkfs.xfs -f -i size=1024 /dev/loop3
-sudo mkfs.xfs -f -i size=1024 /dev/loop4
-sudo mkfs.xfs -f -i size=1024 /dev/loop5
-sudo mkfs.xfs -f -i size=1024 /dev/loop6
-sudo mkfs.xfs -f -i size=1024 /dev/loop7
+sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f -i size=1024 /dev/sd
+sudo mkfs.xfs -f -i size=1024 /dev/sd
 
 # Create the mount points
 sudo mkdir -p /srv/node/loop{2,3,4,5,6,7}
