@@ -10,7 +10,7 @@ EOF
 swift upload testcontainer large.txt -S 4
 
 # Download object as a single file
-swift download testcontainer large.txt -o -
+swift download testcontainer large.txt
 
 # Where is swift storing the segments? Notice the new testcontainer_segments container
 swift list
